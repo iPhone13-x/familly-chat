@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ছবি এডিটর</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap">
+<style>
+:root{--bg:#eef1f4;--panel:#fff;--ink:#14202b;--mute:#5d6b78;--line:#d3dae1;--acc:#1f6f8b;--accink:#fff;--warn:#fff4dc;--warnink:#6b4a00;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10171d;--panel:#18222b;--ink:#e8eef3;--mute:#93a1ae;--line:#2a3743;--acc:#4fb3d1;--accink:#08202a;--warn:#3a2d10;--warnink:#f1d79a}}
+:root[data-theme="dark"]{--bg:#10171d;--panel:#18222b;--ink:#e8eef3;--mute:#93a1ae;--line:#2a3743;--acc:#4fb3d1;--accink:#08202a;--warn:#3a2d10;--warnink:#f1d79a}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 "Hind Siliguri",system-ui,sans-serif}
+main{max-width:960px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.7rem;font-weight:700;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+.grid{display:grid;gap:16px}
+@media (min-width:820px){.grid{grid-template-columns:1.3fr 1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stage{display:grid;place-items:center;min-height:260px;background:repeating-conic-gradient(var(--line) 0 25%,transparent 0 50%) 0 0/20px 20px;border-radius:8px;overflow:hidden}
+canvas{max-width:100%;height:auto;display:none}
+.drop{padding:40px 16px;text-align:center;color:var(--mute);cursor:pointer;width:100%}
+.drop b{color:var(--ink);display:block;font-size:1.1rem}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button,.btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.primary{background:var(--acc);color:var(--accink);border-color:var(--acc)}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);color:var(--ink);resize:vertical;min-height:72px}
+label{display:flex;justify-content:space-between;font-size:.95rem;margin-top:10px}
+label span:last-child{color:var(--mute);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.msg{margin-top:10px;padding:10px 12px;border-radius:8px;background:var(--bg);font-size:.95rem;min-height:1em}
+.warn{background:var(--warn);color:var(--warnink);margin-top:12px;padding:10px 12px;border-radius:8px;font-size:.92rem}
+h2{font-size:1.05rem;margin:0 0 6px}
+</style>
+</head>
+<body>
+<main>
+<h1>ছবি এডিটর</h1>
+<p class="sub">ছবি আপলোড করুন, কী করতে চান লিখুন, ফলাফল ডাউনলোড করুন। ছবি আপনার ফোনেই থাকে, কোথাও আপলোড হয় না।</p>
+<div class="grid">
+<section class="panel">
+<div class="stage" id="stage">
+<label class="drop" id="drop" for="file" style="display:block"><b>ছবি বেছে নিন</b>এখানে ট্যাপ করুন বা ছবি টেনে আনুন</label>
+<canvas id="cv"></canvas>
+</div>
+<input type="file" id="file" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden">
+<div class="row">
+<button id="pick">নতুন ছবি</button>
+<button id="hold" disabled>চেপে ধরে আগের ছবি দেখুন</button>
+<button id="dl" class="primary" disabled>ডাউনলোড</button>
+</div>
+</section>
+<section class="panel">
+<h2>নির্দেশনা লিখুন</h2>
+<textarea id="cmd" placeholder="যেমন: ছবি উজ্জ্বল করো, রঙ আরও গাঢ় করো, ছবি শার্প করো&#10;or: make it warmer and brighter"></textarea>
+<div class="row">
+<button id="go" class="primary">প্রয়োগ করুন</button>
+<button id="auto">অটো ঠিক করুন</button>
+<button id="bw">সাদা-কালো</button>
+<button id="vin">পুরোনো ছবি</button>
+<button id="reset">রিসেট</button>
+</div>
+<div class="msg" id="msg" aria-live="polite">প্রথমে একটি ছবি আপলোড করুন।</div>
+<h2 style="margin-top:16px">নিজে ঠিক করুন</h2>
+<div id="sliders"></div>
+<div class="warn">কাপড় বদলানো বা ছবিতে নতুন কিছু যোগ করার মতো কাজের জন্য ছবি-তৈরির AI মডেল লাগে, এই পেজে তা নেই। এখানে আলো, রঙ, কনট্রাস্ট, শার্পনেস ও ফিল্টারের কাজ হয়।</div>
+</section>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d',{willReadFrequently:true});
+const S=[['b','উজ্জ্বলতা',-100,100],['c','কনট্রাস্ট',-100,100],['s','রঙের গাঢ়তা',-100,100],['w','উষ্ণতা (গরম/ঠান্ডা)',-100,100],['h','শার্পনেস',0,100],['v','ভিগনেট (কোণা গাঢ়)',0,100],['f','ফেড (ম্লান ভাব)',0,100]];
+const DEF={b:0,c:0,s:0,w:0,h:0,v:0,f:0,inv:false,gray:false,sepia:false,lo:0,hi:255};
+let P={...DEF},orig=null,fileName='photo',raf=0;
+
+S.forEach(([k,t,mn,mx])=>{
+ const l=document.createElement('label');
+ l.innerHTML=`<span>${t}</span><span id="v${k}">0</span>`;
+ const r=document.createElement('input');
+ Object.assign(r,{type:'range',min:mn,max:mx,value:0,id:'r'+k});
+ r.addEventListener('input',()=>{P[k]=+r.value;draw()});
+ $('sliders').append(l,r);
+});
+function sync(){S.forEach(([k])=>{$('r'+k).value=P[k];$('v'+k).textContent=Math.round(P[k])})}
+const clamp=v=>v<0?0:v>255?255:v;
+
+function draw(){
+ if(!orig)return;
+ cancelAnimationFrame(raf);
+ raf=requestAnimationFrame(()=>{
+  sync();
+  const d=new ImageData(new Uint8ClampedArray(orig.data),orig.width,orig.height),a=d.data;
+  const W=orig.width,cx=W/2,cy=orig.height/2,md=cx*cx+cy*cy,sc=255/Math.max(1,P.hi-P.lo),c=1+P.c/100,sat=1+P.s/100,wm=P.w*0.6,b=P.b*1.5;
+  for(let i=0;i<a.length;i+=4){
+   let r=(a[i]-P.lo)*sc,g=(a[i+1]-P.lo)*sc,bl=(a[i+2]-P.lo)*sc;
+   r=(r-128)*c+128+b+wm;g=(g-128)*c+128+b;bl=(bl-128)*c+128+b-wm;
+   const y=.299*r+.587*g+.114*bl;
+   r=y+(r-y)*sat;g=y+(g-y)*sat;bl=y+(bl-y)*sat;
+   if(P.gray){r=g=bl=y}
+   if(P.f){const k=P.f/200;r=r*(1-k)+k*150;g=g*(1-k)+k*150;bl=bl*(1-k)+k*150}
+   if(P.v){const q=i>>2,dx=q%W-cx,dy=((q/W)|0)-cy,m=1-P.v/100*((dx*dx+dy*dy)/md);r*=m;g*=m;bl*=m}
+   if(P.inv){r=255-r;g=255-g;bl=255-bl}
+   if(P.sepia){const t=.299*r+.587*g+.114*bl;r=t*1.07+20;g=t*.95+8;bl=t*.75}
+   a[i]=clamp(r);a[i+1]=clamp(g);a[i+2]=clamp(bl);
+  }
+  if(P.h>0)sharpen(d,P.h/100);
+  ctx.putImageData(d,0,0);
+ });
+}
+function sharpen(d,amt){
+ const w=d.width,h=d.height,s=d.data,o=new Uint8ClampedArray(s);
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=(y*w+x)*4;
+  for(let k=0;k<3;k++){
+   const e=5*o[i+k]-o[i-4+k]-o[i+4+k]-o[i-w*4+k]-o[i+w*4+k];
+   s[i+k]=clamp(o[i+k]+(e-o[i+k])*amt);
+  }
+ }
+}
+function autoFix(){
+ const a=orig.data,hist=new Uint32Array(256);let n=0,sum=0;
+ for(let i=0;i<a.length;i+=4){const y=Math.round(.299*a[i]+.587*a[i+1]+.114*a[i+2]);hist[y]++;n++;sum+=y}
+ let acc=0,lo=0,hi=255;
+ for(let i=0;i<256;i++){acc+=hist[i];if(acc>n*.01){lo=i;break}}
+ acc=0;for(let i=255;i>=0;i--){acc+=hist[i];if(acc>n*.01){hi=i;break}}
+ P.lo=Math.min(lo,100);P.hi=Math.max(hi,155);
+ const mean=((sum/n)-P.lo)*255/Math.max(1,P.hi-P.lo);
+ P.b=Math.max(-40,Math.min(40,(118-mean)/1.5));
+ P.s=Math.max(P.s,15);P.h=Math.max(P.h,25);
+}
+
+// নির্দেশনা বোঝার নিয়ম (বাংলা + English)
+function apply(text){
+ const t=text.toLowerCase();const done=[];
+ if(!t.trim()){say('কী করতে চান আগে লিখুন।');return}
+ if(/মূল ছবি|আগের মতো|original|reset|রিসেট/.test(t)){P={...DEF};say('মূল ছবি ফিরিয়ে আনা হয়েছে।');draw();return}
+ const prev=P;P={...DEF};
+ const neg=/কম|কমি|হালকা কর|less|reduce|decrease|lower|dim|কমাও/.test(t);
+ const mag=/অনেক|খুব|বেশি|very|much|a lot|extra/.test(t)?2:1;
+ const sg=neg?-1:1;
+ if(/কাপড়|পোশাক|জামা|শার্ট|ড্রেস|dress|cloth|shirt|outfit|background|ব্যাকগ্রাউন্ড/.test(t)){
+  say('কাপড় বা ব্যাকগ্রাউন্ড বদলানোর জন্য ছবি-তৈরির AI মডেল দরকার, এই পেজ তা পারে না। আলো, রঙ ও ফিল্টারের নির্দেশনা দিতে পারেন।');return}
+ if(/অটো|auto|enhance|improve|কোয়ালিটি|quality|সুন্দর|ঠিক কর|fix/.test(t)){autoFix();done.push('অটো ঠিক')}
+ if(/অন্ধকার|darker|darken/.test(t)){P.b-=25*mag;done.push('আলো কমানো')}
+ else if(/উজ্জ্বল|উজ্জল|আলো|ব্রাইট|bright|light/.test(t)&&!/রঙ|color|colour/.test(t)){P.b+=sg*25*mag;done.push(neg?'আলো কমানো':'আলো বাড়ানো')}
+ if(/কনট্রাস্ট|contrast/.test(t)){P.c+=sg*25*mag;done.push('কনট্রাস্ট')}
+ if(/রঙ|রং|saturat|vivid|colorful|colourful|গাঢ়/.test(t)){P.s+=sg*30*mag;done.push('রঙের গাঢ়তা')}
+ if(/গরম|উষ্ণ|warm/.test(t)){P.w+=25*mag;done.push('উষ্ণ টোন')}
+ if(/ঠান্ডা|ঠাণ্ডা|cool|cold/.test(t)){P.w-=25*mag;done.push('ঠান্ডা টোন')}
+ if(/শার্প|sharp|পরিষ্কার|পরিস্কার|ঝকঝকে|clear/.test(t)){P.h+=sg*35*mag;done.push('শার্পনেস')}
+ if(/সাদা.?কালো|ব্ল্যাক|black.?and.?white|b&w|\bbw\b|mono|grayscale|greyscale/.test(t)){P.gray=true;done.push('সাদা-কালো')}
+ if(/পুরোনো|পুরানো|vintage|sepia|সেপিয়া|retro/.test(t)){P.sepia=true;done.push('পুরোনো ছবির ফিল্টার')}
+ if(/রঙিন করো|color back|original color/.test(t)){P.gray=false;P.sepia=false;done.push('রঙ ফিরিয়ে আনা')}
+ if(/ভিগনেট|vignette|কোণা/.test(t)){P.v=neg?0:60;done.push('ভিগনেট')}
+ if(/ফেড|ম্লান|fade|matte/.test(t)){P.f=neg?0:60;done.push('ফেড')}
+ if(/নেগেটিভ|invert|negative/.test(t)){P.inv=true;done.push('নেগেটিভ')}
+ for(const k of ['b','c','s','w'])P[k]=Math.max(-100,Math.min(100,P[k]));
+ P.h=Math.max(0,Math.min(100,P.h));
+ if(!done.length){P=prev;say('নির্দেশনাটি বুঝতে পারিনি। "উজ্জ্বল করো", "শার্প করো", "সাদা-কালো করো" বা "গরম টোন দাও" ধরনের কিছু লিখুন।');return}
+ say('শুধু এই নির্দেশনা প্রয়োগ হয়েছে: '+done.join(', ')+'। আগের নির্দেশনা বাদ গেছে।');draw();
+}
+function say(m){$('msg').textContent=m}
+function need(){if(!orig){say('প্রথমে একটি ছবি আপলোড করুন।');return false}return true}
+
+function load(f){
+ if(!f||!f.type.startsWith('image/')){say('শুধু ছবির ফাইল দিন।');return}
+ fileName=f.name.replace(/\.[^.]+$/,'')||'photo';
+ const img=new Image(),url=URL.createObjectURL(f);
+ img.onload=()=>{
+  const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));
+  cv.width=Math.round(img.width*k);cv.height=Math.round(img.height*k);
+  ctx.drawImage(img,0,0,cv.width,cv.height);
+  orig=ctx.getImageData(0,0,cv.width,cv.height);
+  URL.revokeObjectURL(url);
+  P={...DEF};cv.style.display='block';$('drop').style.display='none';
+  $('dl').disabled=$('hold').disabled=false;
+  say('ছবি তৈরি। এবার নির্দেশনা লিখুন।');draw();
+ };
+ img.onerror=()=>say('ছবিটি খোলা যায়নি। অন্য ফাইল চেষ্টা করুন।');
+ img.src=url;
+}
+$('pick').onclick=()=>$('file').click();
+$('file').onchange=e=>load(e.target.files[0]);
+['dragover','drop'].forEach(ev=>$('stage').addEventListener(ev,e=>{e.preventDefault();if(ev==='drop')load(e.dataTransfer.files[0])}));
+$('go').onclick=()=>{if(need())apply($('cmd').value)};
+$('auto').onclick=()=>{if(need()){autoFix();say('অটো ঠিক করা হয়েছে।');draw()}};
+$('bw').onclick=()=>{if(need()){P.gray=!P.gray;say(P.gray?'সাদা-কালো করা হয়েছে।':'রঙ ফিরে এসেছে।');draw()}};
+$('vin').onclick=()=>{if(need()){P.sepia=!P.sepia;say(P.sepia?'পুরোনো ছবির ফিল্টার দেওয়া হয়েছে।':'ফিল্টার সরানো হয়েছে।');draw()}};
+$('reset').onclick=()=>{if(need()){P={...DEF};say('সব পরিবর্তন মুছে ফেলা হয়েছে।');draw()}};
+const showOrig=on=>{if(!orig)return;if(on){ctx.putImageData(orig,0,0)}else draw()};
+['pointerdown'].forEach(e=>$('hold').addEventListener(e,()=>showOrig(true)));
+['pointerup','pointerleave','pointercancel'].forEach(e=>$('hold').addEventListener(e,()=>showOrig(false)));
+$('dl').onclick=()=>{
+ if(!need())return;
+ cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fileName+'-edited.png';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)},'image/png');
+};
+</script>
+</body>
+</html>
